@@ -1,0 +1,13 @@
+# build environment
+FROM node:8.16.0-alpine
+COPY ./node-app /my-app
+
+RUN cd /my-app && \
+    npm i --save request-promise \
+        request \
+        readline \
+        moment
+
+WORKDIR my-app
+
+EXPOSE 8000
