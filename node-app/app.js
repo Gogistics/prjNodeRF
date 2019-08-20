@@ -4,7 +4,10 @@
 */
 'use strict';
 
-/** This is handler in singleton pattern. */
+/**
+ * @desc This handler is in singleton pattern and hosts three functions, fetchData(), printData(), and printMore(), that are all unit-test friendly.
+ *       All required modules are imported as soon as the handler gets created.
+ */
 const handler = {
     // import all required modules
     rp: require('request-promise'),
@@ -27,25 +30,28 @@ const handler = {
                     /** @type {!Array<obj>} */
                     let aryFoodTrunks = [];
 
-                    // only start the operations of printing result and iterating the array of the available food turnks
+                    // Only start the operations of filtering out data, printing result, and iterating the array of the available food turnks
                     if (resp && resp.length > 0) {
                         aryFoodTrunks = resp.filter((obj) => {
                                             // filter out the food trunk that are not available today
                                             return obj.dayofweekstr == self.moment().format('dddd');
                                         })
                                         .filter((obj) => {
-                                            // filter out the food trunk 
+                                            // Filter out the food trunk 
                                             // by checking if the current time within the beginning time and the end time of the food trunk
+                                            /** @type {datetime} */
                                             const beginningTime = self.moment(obj.starttime, ['hA']);
+                                            /** @type {datetime} */
                                             const endTime = self.moment(obj.endtime, ['hA']);
+                                            /** @type {datetime} */
                                             const currentTime = self.moment();
 
                                             return (beginningTime.isBefore(currentTime) && currentTime.isBefore(endTime));
                                         })
                                         .sort(function(fisrtObj, secObj){
-                                            // sort the ary by comparing the applicants' names
-                                            // Note: if the performance of the built-in sorting mechanism is not good,
-                                            //       the developers can write their own sorting algorithm
+                                            // Sort the ary by comparing the applicants' names
+                                            // Note: If the performance of the built-in sorting mechanism is not good,
+                                            //       the developers can write their own sorting algorithm.
                                             if(fisrtObj.applicant < secObj.applicant) { return -1; }
                                             if(fisrtObj.applicant > secObj.applicant) { return 1; }
                                             return 0;
@@ -66,7 +72,7 @@ const handler = {
     createIterator: function(objIteratorParams) {
         function* iteratorFoodTrunks(objIteratorParams) {
             while(true) {
-                // return sub arrary within the range of startIndex and endIndex
+                // Return sub arrary within the range of startIndex and endIndex
                 yield objIteratorParams.aryFoodTrunks
                         .slice(objIteratorParams.startIndex + objIteratorParams.step * objIteratorParams.count,
                             objIteratorParams.endIndex + objIteratorParams.step * objIteratorParams.count);              
@@ -74,14 +80,11 @@ const handler = {
             }
         }
 
-        // create iterator
+        // Create iterator
         const iterator = iteratorFoodTrunks(objIteratorParams);
 
         return Promise.resolve({
-            totalLength: objIteratorParams.aryFoodTrunks.length,
-            endIndex: objIteratorParams.endIndex,
-            step: objIteratorParams.step,
-            count: objIteratorParams.count,
+            objIteratorParams: objIteratorParams,
             iterator: iterator
         });
     },
@@ -92,18 +95,19 @@ const handler = {
     printData: function(params) {
         // first round of printing data
         const subAryFoodTrunks = params.iterator
-                                .next()
-                                .value
-                                .map((obj) => {
-                                    const str = `NAME & ADDRESS: ${obj.applicant} ; ${obj.location}`;
-                                    return str;
-                                });
+                                    .next()
+                                    .value
+                                    .map((obj) => {
+                                        /** @type {string} */
+                                        const str = `NAME & ADDRESS: ${obj.applicant} ; ${obj.location}`;
+                                        return str;
+                                    });
 
-        // print result
+        // Print result
         console.log(subAryFoodTrunks);
 
-        // stop the following operation if no more data to print
-        if (params.totalLength < params.endIndex) {
+        // Stop the following operation if no more data to print
+        if (params.objIteratorParams.aryFoodTrunks.length < params.objIteratorParams.endIndex) {
             process.exit();
         } else {
             this.printMore(params);
@@ -115,35 +119,36 @@ const handler = {
      */
     printMore: function(params) {
         const self = this;
+        /** @type {!Array<obj>} */
         const tmpVal = params.iterator.next().value;
 
         if (!Array.isArray(tmpVal) || tmpVal.length == 0) {
-            // terminate readline and process
+            // Terminate readline and process if value is not array or length is equal to zero.
             self.readline.close();
             process.exit();
         } else {
-            // question string
+            // Question string
             const strQuestoin = `Print more data `+
-                `(${params.totalLength - params.step * params.count} ` +
+                `(${params.objIteratorParams.aryFoodTrunks.length - (params.objIteratorParams.step * params.objIteratorParams.count)} ` +
                 `remaining in the list)? (yes)`;
 
-            // read answer
+            // Read answer
             self.readline
                 .question(strQuestoin, (answer) => {
                     if (answer === 'yes') {
-                        // 
+                        // Rebuild the array to match the format
                         const aryFoodTrunks = tmpVal.map((obj) => {
                             const str = `NAME & ADDRESS: ${obj.applicant} ; ${obj.location}`;
                             return str;
                         });
 
-                        // print result
+                        // Print result
                         console.log(aryFoodTrunks);
 
-                        // recursive call to print more data
+                        // Recursive call to print more data
                         self.printMore(params);                                                                                                               
                     } else {
-                        // terminate readline and process
+                        // Terminate readline and process
                         self.readline.close();
                         process.exit();
                     }
@@ -162,13 +167,14 @@ const handler = {
  */
 handler
     .fetchData({
-        uri: 'http://data.sfgov.org/resource/bbb8-hzi6.json',
+        uri: 'http://data.sfgov.org/resource/bbb8-hzi6.json', // API url/uri
         headers: {
             'User-Agent': 'Request-Promise' // set user agent
         },
         json: true // automatically parses the JSON string in the response
     })
     .then((aryFoodTrunks) => {
+        /** This step is to create a generator and pass it to next then() */
         if (aryFoodTrunks.length == 0) {
             console.log('No food trunk available at this moment!');
             process.exit();
@@ -176,19 +182,19 @@ handler
 
         console.log('Parsing data...');
         return handler.createIterator({
-                    count: 0,
-                    startIndex: 0,
-                    endIndex: 10,
-                    step: 10,
+                    count: 0, // offset of the sub array
+                    startIndex: 0, // start index of the sub array
+                    endIndex: 10, // end index of the sub array
+                    step: 10, // how many array items to show
                     aryFoodTrunks: aryFoodTrunks
                 });
     }, (reason) => {
         console.log(reason);
         process.exit();
     })
-    .then((iterator) => {
-        // console.log(iterator);
-        handler.printData(iterator);
+    .then((params) => {
+        /** This step is to print data */
+        handler.printData(params);
     }, (reason) => {
         console.log(reason);
         process.exit();
